@@ -8,6 +8,7 @@ import pickle
 import tensorflow as tf 
 from tensorflow.contrib import learn 
 from tflearn.data_utils import to_categorical, pad_sequences
+from sklearn.metrics import confusion_matrix
 
 parser = argparse.ArgumentParser(description="Test URLNet model")
 
@@ -21,16 +22,16 @@ parser.add_argument('--data.max_len_chars', type=int, default=default_max_len_ch
 default_max_len_subwords = 20
 parser.add_argument('--data.max_len_subwords', type=int, default=default_max_len_subwords, metavar="MLSW",
   help="maxium length of word in subwords/ characters (default: {})".format(default_max_len_subwords))
-parser.add_argument('--data.data_dir', type=str, default='train_10000.txt', metavar="DATADIR",
+parser.add_argument('--data.data_dir', type=str, default='test_10000.txt', metavar="DATADIR",
   help="location of data file")
 default_delimit_mode = 1
 parser.add_argument("--data.delimit_mode", type=int, default=default_delimit_mode, metavar="DLMODE",
   help="0: delimit by special chars, 1: delimit by special chars + each char as a word (default: {})".format(default_delimit_mode))
 parser.add_argument('--data.subword_dict_dir', type=str, default="runs/10000/subwords_dict.p", metavar="SUBWORD_DICT", 
 	help="directory of the subword dictionary")
-parser.add_argument('--data.word_dict_dir', type=str, default="runs/10000/word_dict.p", metavar="WORD_DICT",
+parser.add_argument('--data.word_dict_dir', type=str, default="runs/10000/words_dict.p", metavar="WORD_DICT",
 	help="directory of the word dictionary")
-parser.add_argument('--data.char_dict_dir', type=str, default="runs/10000/char_dict.p", metavar="	CHAR_DICT",
+parser.add_argument('--data.char_dict_dir', type=str, default="runs/10000/chars_dict.p", metavar="CHAR_DICT",
 	help="directory of the character dictionary")
 
 # model args 
@@ -56,7 +57,7 @@ FLAGS = vars(parser.parse_args())
 for key, val in FLAGS.items():
 	print("{}={}".format(key, val))
 
-urls, labels = read_data(FLAGS["data.data_dir"]) 
+urls, labels = read_data(FLAGS["data.data_dir"])
  
 x, word_reverse_dict = get_word_vocab(urls, FLAGS["data.max_len_words"]) 
 word_x = get_words(x, word_reverse_dict, FLAGS["data.delimit_mode"], urls) 
@@ -66,8 +67,8 @@ print("Size of subword vocabulary (train): {}".format(len(ngram_dict)))
 word_dict = pickle.load(open(FLAGS["data.word_dict_dir"], "rb"))
 print("size of word vocabulary (train): {}".format(len(word_dict)))
 ngramed_id_x, worded_id_x = ngram_id_x_from_dict(word_x, FLAGS["data.max_len_subwords"], ngram_dict, word_dict) 
-chars_dict = pickle.load(open(FLAGS["data.char_dict_dir"], "rb"))          
-chared_id_x = char_id_x(urls, chars_dict, FLAGS["data.max_len_chars"])    
+chars_dict = pickle.load(open(FLAGS["data.char_dict_dir"], "rb"))
+chared_id_x = char_id_x(urls, chars_dict, FLAGS["data.max_len_chars"])
 
 print("Number of testing urls: {}".format(len(labels)))
 
@@ -177,7 +178,9 @@ with graph.as_default():
             it.set_postfix()
 
 if labels is not None: 
-    correct_preds = float(sum(all_predictions == labels)) 
+    correct_preds = float(sum(all_predictions == labels))
+    tn, fp, fn, tp = confusion_matrix(all_predictions, labels).ravel()
     print("Accuracy: {}".format(correct_preds/float(len(labels))))
+    print(tn, fp, fn, tp)
 
 save_test_result(labels, all_predictions, all_scores, FLAGS["log.output_dir"]) 

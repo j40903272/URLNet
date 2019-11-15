@@ -5,22 +5,29 @@ from collections import defaultdict
 from bisect import bisect_left 
 import tensorflow as tf 
 from tflearn.data_utils import to_categorical 
-from tensorflow.contrib import learn 
+from tensorflow.contrib import learn
+import warnings
+warnings.filterwarnings("ignore")
+with warnings.catch_warnings():
+    warnings.filterwarnings("ignore",category=DeprecationWarning)
+np.random.seed(87)
+
+
 
 def read_data(file_dir): 
-    with open(file_dir) as file: 
+    with open(file_dir, encoding="utf-8") as file: 
         urls = []
         labels = []
         for line in file.readlines(): 
-            items = line.split('\t') 
+            items = line.split(',') 
             label = int(items[0]) 
             if label == 1: 
                 labels.append(1) 
             else: 
                 labels.append(0) 
-            url = items[1][:-1]
+            url = items[1].strip()
             urls.append(url) 
-    return urls, labels 
+    return np.array(urls), np.array(labels) 
 
 def split_url(line, part):
     if line.startswith("http://"):
@@ -139,7 +146,7 @@ def get_words(x, reverse_dict, delimit_mode, urls=None):
                     if w == len(word_url) - 1: 
                         words.extend(list(raw_url))
             processed_x.append(words)
-    return processed_x 
+    return np.array(processed_x)
 
 def get_char_ngrams(ngram_len, word): 
     word = "<" + word + ">" 
@@ -165,8 +172,8 @@ def char_id_x(urls, char_dict, max_len_chars):
             except KeyError:
                 c_id = 0
             url_in_char_id.append(c_id) 
-        chared_id_x.append(url_in_char_id) 
-    return chared_id_x 
+        chared_id_x.append(url_in_char_id)
+    return np.array(chared_id_x) 
     
 def ngram_id_x(word_x, max_len_subwords, high_freq_words=None):   
     char_ngram_len = 1
@@ -195,8 +202,9 @@ def ngram_id_x(word_x, max_len_subwords, high_freq_words=None):
                 url_in_ngrams.append(ngrams) 
                 all_words.add(word) 
                 url_in_words.append(word) 
+
         ngramed_x.append(url_in_ngrams)
-        worded_x.append(url_in_words) 
+        worded_x.append(url_in_words)
 
     all_ngrams = list(all_ngrams) 
     ngrams_dict = dict()
@@ -208,25 +216,28 @@ def ngram_id_x(word_x, max_len_subwords, high_freq_words=None):
     for i in range(len(all_words)): 
         words_dict[all_words[i]] = i+1 #word id=0 for padding word 
     print("Size of word vocabulary: {}".format(len(words_dict)))
-    print("Index of <UNKNOWN> word: {}".format(words_dict["<UNKNOWN>"]))        
+    if "<UNKNOWN>" in all_words:
+        print("Index of <UNKNOWN> word: {}".format(words_dict["<UNKNOWN>"]))
 
     ngramed_id_x = []
     for ngramed_url in ngramed_x: 
         url_in_ngrams = []
         for ngramed_word in ngramed_url: 
-            ngram_ids = [ngrams_dict[x] for x in ngramed_word] 
+            ngram_ids = [ngrams_dict[x] for x in ngramed_word]
             url_in_ngrams.append(ngram_ids) 
-        ngramed_id_x.append(url_in_ngrams)  
+        ngramed_id_x.append(url_in_ngrams)
     worded_id_x = []
-    for worded_url in worded_x: 
+    for worded_url in worded_x:
         word_ids = [words_dict[x] for x in worded_url]
         worded_id_x.append(word_ids) 
     
-    return ngramed_id_x, ngrams_dict, worded_id_x, words_dict 
+    
+    return np.array(ngramed_id_x), ngrams_dict, np.array(worded_id_x), words_dict
 
 def ngram_id_x_from_dict(word_x, max_len_subwords, ngram_dict, word_dict = None): 
     char_ngram_len = 1
-    print("Index of <UNKNOWN> word: {}".format(word_dict["<UNKNOWN>"]))
+    if "<UNKNOWN>" in word_dict:
+        print("Index of <UNKNOWN> word: {}".format(word_dict["<UNKNOWN>"]))
     ngramed_id_x = [] 
     worded_id_x = [] 
     counter = 0
@@ -273,9 +284,15 @@ def is_in(a,x):
     else:
         return False 
 
-def prep_train_test(pos_x, neg_x, dev_pct): 
+def prep_train_test(n, dev_pct): 
+    np.random.seed(87)
+    shuffle_indices = np.random.permutation(np.arange(n))
+    split = int(n*dev_pct)
+    return shuffle_indices[split:], shuffle_indices[:split]
+
+
     np.random.seed(10) 
-    shuffle_indices=np.random.permutation(np.arange(len(pos_x)))
+    shuffle_indices = np.random.permutation(np.arange(len(pos_x)))
     pos_x_shuffled = pos_x[shuffle_indices]
     dev_idx = -1 * int(dev_pct * float(len(pos_x)))
     pos_train = pos_x_shuffled[:dev_idx]
@@ -381,17 +398,17 @@ def save_test_result(labels, all_predictions, all_scores, output_dir):
         if i == 1: 
             output_labels.append(i) 
         else: 
-            output_labels.append(-1) 
+            output_labels.append(0) 
     output_preds = [] 
     for i in all_predictions: 
         if i == 1: 
             output_preds.append(i) 
         else: 
-            output_preds.append(-1) 
+            output_preds.append(0)
     softmax_scores = [softmax(i) for i in all_scores]
-    with open(output_dir, "w") as file: 
-        output = "label\tpredict\tscore\n"
+    with open(os.path.join(output_dir, "test_result.csv"), "w") as file: 
+        output = "label,predict,score\n"
         file.write(output)
         for i in range(len(output_labels)): 
-            output = str(int(output_labels[i])) + '\t' + str(int(output_preds[i])) + '\t' + str(softmax_scores[i][1]) + '\n' 
+            output = str(int(output_labels[i])) + ',' + str(int(output_preds[i])) + ',' + str(softmax_scores[i][1]) + '\n' 
             file.write(output) 

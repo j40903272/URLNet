@@ -26,7 +26,9 @@ class TextCNN(object):
      
             if mode == 4 or mode == 5: 
                 self.embedded_x_char = tf.nn.embedding_lookup(self.char_w, self.input_x_char)
-                self.embedded_x_char = tf.multiply(self.embedded_x_char, self.input_x_char_pad_idx)
+                #self.embedded_x_char = tf.Print(self.embedded_x_char, [self.embedded_x_char[0][0][0][:10], tf.reduce_sum(self.embedded_x_char)])
+                self.embedded_x_char = tf.multiply(self.embedded_x_char, self.input_x_char_pad_idx)   ####  make pad embedding all zero
+                #self.embedded_x_char = tf.Print(self.embedded_x_char, [self.embedded_x_char[0][0][0][0], tf.reduce_sum(self.embedded_x_char)])
             if mode == 2 or mode == 3 or mode == 4 or mode == 5: 
                 self.embedded_x_word = tf.nn.embedding_lookup(self.word_w, self.input_x_word) 
             if mode == 1 or mode == 3 or mode == 5: 
@@ -151,7 +153,12 @@ class TextCNN(object):
         with tf.name_scope("loss"): 
             losses = tf.nn.softmax_cross_entropy_with_logits(logits=self.scores, labels=self.input_y) 
             self.loss = tf.reduce_mean(losses) + l2_reg_lambda * l2_loss
+            tf.summary.scalar('loss', self.loss)
 
         with tf.name_scope("accuracy"): 
             correct_preds = tf.equal(self.predictions, tf.argmax(self.input_y, 1)) 
-            self.accuracy = tf.reduce_mean(tf.cast(correct_preds, "float"), name="accuracy") 
+            self.accuracy = tf.reduce_mean(tf.cast(correct_preds, "float"), name="accuracy")
+            tf.summary.scalar('accuracy', self.accuracy)
+
+
+        self.merged = tf.summary.merge_all()
