@@ -1,6 +1,21 @@
 **URLNet**
 ==========
 
+### Mainly used for interpret URLNet
+
+### Usage
+interpret original model: check_bias_word-Copy2.ipynb
+
+interpret new adversairla model: check_bias_word-Copy3.ipynb
+
+### Results
+original: img/highlight_token.pdf
+
+our: img/highlight_token11.pdf, img/highlight_token22.pdf, img/highlight_token33.pdf
+
+
+
+
 Introduction
 ------------
 
