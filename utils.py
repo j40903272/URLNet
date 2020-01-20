@@ -10,6 +10,8 @@ import warnings
 warnings.filterwarnings("ignore")
 with warnings.catch_warnings():
     warnings.filterwarnings("ignore",category=DeprecationWarning)
+    
+random.seed(87)
 np.random.seed(87)
 
 
@@ -377,7 +379,8 @@ def softmax(x):
     e_x = np.exp(x - np.max(x))
     return e_x / e_x.sum() 
 
-def batch_iter(data, batch_size, num_epochs, shuffle=True): 
+def batch_iter(data, batch_size, num_epochs, shuffle=True):
+    np.random.seed(87)
     data = np.array(data) 
     data_size = len(data) 
     num_batches_per_epoch = int((len(data)-1)/batch_size) + 1 

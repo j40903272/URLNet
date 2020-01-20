@@ -2,3 +2,8 @@ TextCNN.pyc
 utils.pyc
 temp.sh
 runs
+*.pkl
+*.csv
+*.txt
+*.ttf
+__pycache__
